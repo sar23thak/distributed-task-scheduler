@@ -1,6 +1,13 @@
-@TaskScheduler.API_HostAddress = http://localhost:5166
+@baseUrl = http://localhost:5166
 
-GET {{TaskScheduler.API_HostAddress}}/weatherforecast/
-Accept: application/json
+### Enqueue a job
+POST {{baseUrl}}/api/jobs
+Content-Type: application/json
 
-###
+{
+    "type": "SendEmail",
+    "payload": "{\"to\": \"test@gmail.com\", \"subject\": \"Hello!\"}",
+    "priority": 5,
+    "maxRetries": 3,
+    "scheduledAt": null
+}

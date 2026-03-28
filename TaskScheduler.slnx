@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
   <Project Path="TaskScheduler.Api/TaskScheduler.Api.csproj" />
   <Project Path="TaskScheduler.Core/TaskScheduler.Core.csproj" />
   <Project Path="TaskScheduler.Worker/TaskScheduler.Worker.csproj" />
