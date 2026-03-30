@@ -1,3 +1,4 @@
+using TaskScheduler.Core.Enums;
 using TaskScheduler.Core.Interfaces;
 
 namespace TaskScheduler.Worker;
@@ -41,11 +42,21 @@ public class Worker : BackgroundService
             }
             catch (Exception ex)
             {
-                job.Status=Core.Enums.JobStatus.Failed;
+                job.RetryCount++;
                 job.LastError = ex.Message;
-                await _jobRepository.UpdateAsync(job);
+                if(job.RetryCount >= job.MaxRetries)
+                {
+                    job.Status = JobStatus.DeadLetter;
+                    _logger.LogWarning("Job {JobId} exhausted all retries. Moving to dead letter.", job.Id);
+                }
+                else
+                {
+                    job.Status=JobStatus.Pending;
+                    _logger.LogWarning("Job {JobId} failed. Retry {RetryCount}/{MaxRetries}.", 
+                                        job.Id, job.RetryCount, job.MaxRetries);
+                }
 
-                _logger.LogError("Job {JobId} failed: {Error}", job.Id, ex.Message);
+                await _jobRepository.UpdateAsync(job);
             }
         }
     }
@@ -62,6 +73,9 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Generating report with payload: {Payload}", job.Payload);
                 await Task.Delay(1000); // simulate work
                 break;
+
+            case "AlwaysFail":
+                throw new Exception("This job always fails intentionally.");
 
             default:
                 throw new InvalidOperationException($"Unknown job type: {job.Type}");
