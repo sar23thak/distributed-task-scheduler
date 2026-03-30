@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TaskScheduler.Core\TaskScheduler.Core.csproj" />
+    <ProjectReference Include="..\TaskScheduler.Infrastructure\TaskScheduler.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

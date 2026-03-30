@@ -1,10 +1,10 @@
-using TaskScheduler.Api.Repositories;
+using TaskScheduler.Infrastructure.Repositories;
 using TaskScheduler.Core.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Services will be registered here
-var connectionString = builder.Configuration.GetConnectionString("MySQL");
+var connectionString = builder.Configuration.GetConnectionString("MySQL")!;
 builder.Services.AddSingleton<IJobRepository>(new JobRepository(connectionString));
 
 builder.Services.AddControllers();

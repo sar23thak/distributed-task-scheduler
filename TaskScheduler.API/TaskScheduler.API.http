@@ -11,3 +11,6 @@ Content-Type: application/json
     "maxRetries": 3,
     "scheduledAt": null
 }
+
+### Get a job by id
+GET {{baseUrl}}/api/jobs/4d8559eb-f7eb-49a1-91c8-834de352ef32
