@@ -1,5 +1,6 @@
 using TaskScheduler.Core.Enums;
 using TaskScheduler.Core.Interfaces;
+using TaskScheduler.Infrastructure.Services;
 
 namespace TaskScheduler.Worker;
 
@@ -7,34 +8,49 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly IJobRepository _jobRepository;
+    private readonly RedisDistributedLockService _lockService;
 
-    public Worker(ILogger<Worker> logger, IJobRepository jobRepository)
+    public Worker(ILogger<Worker> logger, IJobRepository jobRepository, RedisDistributedLockService lockService)
     {
         _logger = logger;
         _jobRepository = jobRepository;
+        _lockService = lockService;
     }
-    protected override async Task ExecuteAsync (CancellationToken stoppingToken)
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Worker started.");
-        while(!stoppingToken.IsCancellationRequested)
+
+        while (!stoppingToken.IsCancellationRequested)
         {
             var job = await _jobRepository.GetNextPendingJobAsync();
-            if(job is null)
+
+            if (job is null)
             {
                 await Task.Delay(2000, stoppingToken);
                 continue;
             }
 
+            var lockAcquired = await _lockService.AcquireLockAsync(job.Id);
+
+            if (!lockAcquired)
+            {
+                _logger.LogInformation("Job {JobId} is already being processed by another worker. Skipping.", job.Id);
+                await Task.Delay(500, stoppingToken);
+                continue;
+            }
+
             _logger.LogInformation("Picked up job {JobId} of type {JobType}", job.Id, job.Type);
-            job.Status=Core.Enums.JobStatus.Running;
-            job.StartedAt= DateTime.Now;
+
+            job.Status = JobStatus.Running;
+            job.StartedAt = DateTime.UtcNow;
             await _jobRepository.UpdateAsync(job);
 
             try
             {
                 await ExecuteJobAsync(job);
 
-                job.Status = Core.Enums.JobStatus.Completed;
+                job.Status = JobStatus.Completed;
                 job.CompletedAt = DateTime.UtcNow;
                 await _jobRepository.UpdateAsync(job);
 
@@ -44,34 +60,40 @@ public class Worker : BackgroundService
             {
                 job.RetryCount++;
                 job.LastError = ex.Message;
-                if(job.RetryCount >= job.MaxRetries)
+
+                if (job.RetryCount >= job.MaxRetries)
                 {
                     job.Status = JobStatus.DeadLetter;
                     _logger.LogWarning("Job {JobId} exhausted all retries. Moving to dead letter.", job.Id);
                 }
                 else
                 {
-                    job.Status=JobStatus.Pending;
-                    _logger.LogWarning("Job {JobId} failed. Retry {RetryCount}/{MaxRetries}.", 
-                                        job.Id, job.RetryCount, job.MaxRetries);
+                    job.Status = JobStatus.Pending;
+                    _logger.LogWarning("Job {JobId} failed. Retry {RetryCount}/{MaxRetries}.",
+                        job.Id, job.RetryCount, job.MaxRetries);
                 }
 
                 await _jobRepository.UpdateAsync(job);
             }
+            finally
+            {
+                await _lockService.ReleaseLockAsync(job.Id);
+            }
         }
     }
+
     private async Task ExecuteJobAsync(Core.Models.Job job)
     {
         switch (job.Type)
         {
             case "SendEmail":
                 _logger.LogInformation("Sending email with payload: {Payload}", job.Payload);
-                await Task.Delay(500); // simulate work
+                await Task.Delay(500);
                 break;
 
             case "GenerateReport":
                 _logger.LogInformation("Generating report with payload: {Payload}", job.Payload);
-                await Task.Delay(1000); // simulate work
+                await Task.Delay(1000);
                 break;
 
             case "AlwaysFail":

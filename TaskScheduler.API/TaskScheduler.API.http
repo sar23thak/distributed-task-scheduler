@@ -1,24 +1,13 @@
 @baseUrl = http://localhost:5166
 
 ### Enqueue a job
-# POST {{baseUrl}}/api/jobs
-# Content-Type: application/json
-
-# {
-#     "type": "GenerateReport",
-#     "payload": "{\"to\": \"sarthak.sharma@gmail.com\", \"subject\": \"Hello!\"}",
-#     "priority": 5,
-#     "maxRetries": 3,
-#     "scheduledAt": null
-# }
-
 POST {{baseUrl}}/api/jobs
 Content-Type: application/json
 
 {
-    "type": "AlwaysFail",
-    "payload": "{}",
-    "priority": 1,
+    "type": "SendEmail",
+    "payload": "{\"to\": \"sarthak.sharma@gmail.com\", \"subject\": \"Hello!\"}",
+    "priority": 5,
     "maxRetries": 3,
     "scheduledAt": null
 }
