@@ -8,4 +8,5 @@ public interface IJobRepository
     Task<Job?> GetByIdAsync(Guid id);
     Task<Job?> GetNextPendingJobAsync();
     Task UpdateAsync(Job job);
+    Task<int> GetPendingJobCountAsync();
 }

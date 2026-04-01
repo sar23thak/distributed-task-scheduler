@@ -12,6 +12,7 @@ var redisConnection = builder.Configuration.GetConnectionString("Redis")
 
 builder.Services.AddSingleton<IJobRepository>(new JobRepository(mySqlConnection));
 builder.Services.AddSingleton(new RedisDistributedLockService(redisConnection));
+builder.Services.AddSingleton(new AdaptiveRateLimiter());
 
 builder.Services.AddHostedService<TaskScheduler.Worker.Worker>();
 

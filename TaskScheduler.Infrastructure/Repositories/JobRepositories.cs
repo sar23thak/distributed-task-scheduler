@@ -64,4 +64,10 @@ public class JobRepository : IJobRepository
         using var connection = new MySqlConnection(_connectionString);
         await connection.ExecuteAsync(sql, job);
     }
+    public async Task<int> GetPendingJobCountAsync()
+    {
+        const string sql = "SELECT COUNT(*) FROM Jobs WHERE Status=@Status";
+        using var connection = new MySqlConnection(_connectionString);
+        return await connection.ExecuteScalarAsync<int>(sql, new { Status = JobStatus.Pending });
+    }
 }

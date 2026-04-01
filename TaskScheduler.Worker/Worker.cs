@@ -9,12 +9,15 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly IJobRepository _jobRepository;
     private readonly RedisDistributedLockService _lockService;
+    private readonly AdaptiveRateLimiter _rateLimiter;
 
-    public Worker(ILogger<Worker> logger, IJobRepository jobRepository, RedisDistributedLockService lockService)
+    public Worker(ILogger<Worker> logger, IJobRepository jobRepository,
+        RedisDistributedLockService lockService, AdaptiveRateLimiter rateLimiter)
     {
         _logger = logger;
         _jobRepository = jobRepository;
         _lockService = lockService;
+        _rateLimiter = rateLimiter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -23,6 +26,9 @@ public class Worker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var pendingCount = await _jobRepository.GetPendingJobCountAsync();
+            await _rateLimiter.WaitAsync(pendingCount, stoppingToken);
+
             var job = await _jobRepository.GetNextPendingJobAsync();
 
             if (job is null)
@@ -40,7 +46,8 @@ public class Worker : BackgroundService
                 continue;
             }
 
-            _logger.LogInformation("Picked up job {JobId} of type {JobType}", job.Id, job.Type);
+            _logger.LogInformation("Picked up job {JobId} of type {JobType} | Pending jobs: {PendingCount}",
+                job.Id, job.Type, pendingCount);
 
             job.Status = JobStatus.Running;
             job.StartedAt = DateTime.UtcNow;
@@ -93,7 +100,7 @@ public class Worker : BackgroundService
 
             case "GenerateReport":
                 _logger.LogInformation("Generating report with payload: {Payload}", job.Payload);
-                await Task.Delay(1000);
+                await Task.Delay(8000);
                 break;
 
             case "AlwaysFail":
