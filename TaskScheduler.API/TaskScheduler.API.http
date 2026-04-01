@@ -14,3 +14,6 @@ Content-Type: application/json
 
 ### Get a job by id
 GET {{baseUrl}}/api/jobs/4d8559eb-f7eb-49a1-91c8-834de352ef32
+
+### Get metrics
+GET {{baseUrl}}/api/jobs/metrics

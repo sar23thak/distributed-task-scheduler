@@ -44,6 +44,12 @@ namespace TaskScheduler.Api.Controllers
 
             return Ok(job);
         }
+        [HttpGet("metrics")]
+        public async Task<IActionResult> GetMetrics()
+        {
+            var metrics = await _jobRepository.GetMetricsAsync();
+            return Ok(metrics);
+        }
     }
     public record EnqueueJobRequest(string Type, string Payload, int Priority = 0, 
                                     int MaxRetries = 3, DateTime? ScheduledAt = null);

@@ -70,4 +70,16 @@ public class JobRepository : IJobRepository
         using var connection = new MySqlConnection(_connectionString);
         return await connection.ExecuteScalarAsync<int>(sql, new { Status = JobStatus.Pending });
     }
+    public async Task<JobMetrics> GetMetricsAsync()
+    {
+        const string sql = @"SELECT
+                            SUM(CASE WHEN Status=0 THEN 1 ELSE 0 END) AS PendingJobs,
+                            SUM(CASE WHEN Status=1 THEN 1 ELSE 0 END) AS RunningJobs,
+                            SUM(CASE WHEN Status=2 THEN 1 ELSE 0 END) AS CompletedJobs,
+                            SUM(CASE WHEN Status=3 THEN 1 ELSE 0 END) AS FailedJobs,
+                            SUM(CASE WHEN Status=4 THEN 1 ELSE 0 END) AS DeadLetterJobs,
+                            Count(*)  AS TotalJobs FROM Jobs";
+        using var connection = new MySqlConnection(_connectionString);
+        return await connection.QuerySingleAsync<JobMetrics>(sql);
+    }
 }
