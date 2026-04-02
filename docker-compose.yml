@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   mysql:
     image: mysql:8.0
@@ -15,13 +13,51 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   redis:
     image: redis:7.2
     container_name: taskscheduler-redis
     restart: always
     ports:
       - "6379:6379"
-
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    build:
+      context: .
+      dockerfile: TaskScheduler.API/Dockerfile
+    container_name: taskscheduler-api
+    restart: always
+    ports:
+      - "5166:8080"
+    environment:
+      - ConnectionStrings__MySQL=Server=mysql;Port=3306;Database=taskscheduler;User=appuser;Password=app1234;
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  worker:
+    build:
+      context: .
+      dockerfile: TaskScheduler.Worker/Dockerfile
+    container_name: taskscheduler-worker
+    restart: always
+    environment:
+      - ConnectionStrings__MySQL=Server=mysql;Port=3306;Database=taskscheduler;User=appuser;Password=app1234;
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 volumes:
   mysql_data:
