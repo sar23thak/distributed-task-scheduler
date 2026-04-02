@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task Scheduler Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+            .metric h3 {
+                font-size: 28px;
+                margin: 0;
+            }
+
+        #completedJobs {
+            color: #22c55e;
+        }
+
+        #failedJobs {
+            color: #ef4444;
+        }
+
+        #runningJobs {
+            color: #3b82f6;
+        }
+
+        #pendingJobs {
+            color: #f59e0b;
+        }
+
+        #deadLetterJobs {
+            color: #a855f7;
+        }
+
+        input, button {
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        input {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+            button:hover {
+                background: #2563eb;
+            }
+
+        .log {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #94a3b8;
+        }
+
+        .footer {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #64748b;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📊 Task Scheduler Dashboard</h1>
+
+    <!-- Metrics -->
+    <div class="card">
+        <h2>Metrics</h2>
+        <div class="metrics">
+            <div class="metric">
+                <h3 id="totalJobs">0</h3>
+                <p>Total</p>
+            </div>
+            <div class="metric">
+                <h3 id="pendingJobs">0</h3>
+                <p>Pending</p>
+            </div>
+            <div class="metric">
+                <h3 id="runningJobs">0</h3>
+                <p>Running</p>
+            </div>
+            <div class="metric">
+                <h3 id="completedJobs">0</h3>
+                <p>Completed</p>
+            </div>
+            <div class="metric">
+                <h3 id="failedJobs">0</h3>
+                <p>Failed</p>
+            </div>
+            <div class="metric">
+                <h3 id="deadLetterJobs">0</h3>
+                <p>Dead Letter</p>
+            </div>
+        </div>
+        <div class="footer" id="lastUpdated">Last updated: -</div>
+    </div>
+
+    <!-- Enqueue Form -->
+    <div class="card">
+        <h2>Enqueue Job</h2>
+
+        <input id="type" placeholder="Job Type (e.g. EmailJob)" />
+        <input id="payload" placeholder='Payload (JSON string or plain text)' />
+        <input id="priority" type="number" placeholder="Priority (default 0)" />
+        <input id="maxRetries" type="number" placeholder="Max Retries (default 3)" />
+        <input id="scheduledAt" type="datetime-local" />
+
+        <button onclick="enqueueJob()">Submit Job</button>
+
+        <p class="log" id="enqueueResult"></p>
+    </div>
+
+    <script>
+        async function fetchMetrics() {
+            try {
+                const res = await fetch('/api/jobs/metrics');
+                const data = await res.json();
+
+                document.getElementById('totalJobs').innerText = data.totalJobs ?? 0;
+                document.getElementById('pendingJobs').innerText = data.pendingJobs ?? 0;
+                document.getElementById('runningJobs').innerText = data.runningJobs ?? 0;
+                document.getElementById('completedJobs').innerText = data.completedJobs ?? 0;
+                document.getElementById('failedJobs').innerText = data.failedJobs ?? 0;
+                document.getElementById('deadLetterJobs').innerText = data.deadLetterJobs ?? 0;
+
+                document.getElementById('lastUpdated').innerText =
+                    "Last updated: " + new Date().toLocaleTimeString();
+            } catch (err) {
+                console.error("Metrics error:", err);
+            }
+        }
+
+        async function enqueueJob() {
+            const type = document.getElementById('type').value.trim();
+            const payload = document.getElementById('payload').value.trim();
+            const priority = parseInt(document.getElementById('priority').value) || 0;
+            const maxRetries = parseInt(document.getElementById('maxRetries').value) || 3;
+            const scheduledAtValue = document.getElementById('scheduledAt').value;
+
+            if (!type) {
+                document.getElementById('enqueueResult').innerText = "❌ Job type is required";
+                return;
+            }
+
+            let scheduledAt = null;
+            if (scheduledAtValue) {
+                scheduledAt = new Date(scheduledAtValue).toISOString();
+            }
+
+            try {
+                const res = await fetch('/api/jobs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        payload: payload,
+                        priority: priority,
+                        maxRetries: maxRetries,
+                        scheduledAt: scheduledAt
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById('enqueueResult').innerText = "✅ Job enqueued successfully";
+
+                    // reset form
+                    document.getElementById('type').value = "";
+                    document.getElementById('payload').value = "";
+                    document.getElementById('priority').value = "";
+                    document.getElementById('maxRetries').value = "";
+                    document.getElementById('scheduledAt').value = "";
+
+                    fetchMetrics();
+                } else {
+                    const text = await res.text();
+                    document.getElementById('enqueueResult').innerText = "❌ Failed: " + text;
+                }
+            } catch (err) {
+                document.getElementById('enqueueResult').innerText = "❌ Error: " + err.message;
+            }
+        }
+
+        // Poll every 2 seconds
+        setInterval(fetchMetrics, 2000);
+
+        // Initial load
+        fetchMetrics();
+    </script>
+
+</body>
+</html>

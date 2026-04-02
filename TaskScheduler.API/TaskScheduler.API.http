@@ -6,7 +6,7 @@ Content-Type: application/json
 
 {
     "type": "SendEmail",
-    "payload": "{\"to\": \"sarthak.sharma@gmail.com\", \"subject\": \"Hello!\"}",
+    "payload": "{\"to\": \"mayank.sharma@gmail.com\", \"subject\": \"Hello!\"}",
     "priority": 5,
     "maxRetries": 3,
     "scheduledAt": null
